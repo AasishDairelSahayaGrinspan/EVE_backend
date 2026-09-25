@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EVE Health — Diagnostics Demo</title>
+<style>
+  :root { --bg:#f6f8fb; --card:#fff; --ink:#1a2b3c; --muted:#64748b; --brand:#0e7c6b; --line:#e2e8f0; }
+  * { box-sizing:border-box; } body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:12px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; }
+  header h1 { font-size:18px; margin:0; } header h1 span { color:var(--brand); }
+  main { max-width:1000px; margin:24px auto; padding:0 16px 60px; display:grid; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .card h2 { margin:0 0 12px; font-size:16px; }
+  label { font-size:13px; color:var(--muted); display:block; margin:8px 0 4px; }
+  input,select,button { font-size:14px; padding:9px 10px; border-radius:8px; border:1px solid var(--line); width:100%; }
+  button { background:var(--brand); color:#fff; border:none; cursor:pointer; font-weight:600; margin-top:10px; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:12px; } @media(max-width:640px){.row{grid-template-columns:1fr}}
+  .badge { display:inline-block; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:700; }
+  .PENDING{background:#fef3c7;color:#92400e}.CONFIRMED{background:#dcfce7;color:#166534}
+  .FAILED{background:#fee2e2;color:#991b1b}.CANCELLED{background:#e2e8f0;color:#475569}
+  .SUCCESS{background:#dcfce7;color:#166534}
+  table { width:100%; border-collapse:collapse; font-size:14px; } th,td { text-align:left; padding:8px; border-bottom:1px solid var(--line); }
+  .muted{color:var(--muted);font-size:13px} .err{color:#b91c1c;font-size:13px;margin-top:8px} .ok{color:#166534;font-size:13px;margin-top:8px}
+  #cfg { display:flex; gap:8px; } #cfg input { flex:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1><span>EVE</span> Health · Diagnostics</h1>
+  <div><span id="who" class="muted"></span> <button id="logout" class="ghost" style="width:auto;display:none">Logout</button></div>
+</header>
+<main>
+  <div class="card">
+    <h2>Connection</h2>
+    <div id="cfg"><input id="api" value="http://localhost:8000" /><button id="saveApi" class="ghost" style="width:120px">Save</button></div>
+    <p class="muted">Backend must be running (<code>uvicorn app.main:app</code>). API docs at <code>/docs</code>.</p>
+  </div>
+
+  <div class="card" id="authCard">
+    <h2>Login / Signup</h2>
+    <div class="row">
+      <div><label>Name (signup only)</label><input id="name" placeholder="Aarav Sharma" /></div>
+      <div><label>Email</label><input id="email" placeholder="demo@eve.health" value="demo@eve.health" /></div>
+    </div>
+    <label>Password</label><input id="password" type="password" value="demo-pass-1" />
+    <div class="row"><button id="login">Login</button><button id="signup" class="ghost">Signup</button></div>
+    <div id="authMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>Centres &amp; Tests</h2>
+    <div class="row"><button id="loadCatalog" class="ghost">Load catalogue</button><button id="loadBookings" class="ghost">Refresh my bookings</button></div>
+    <div class="row" style="margin-top:12px">
+      <div><label>Centre</label><select id="centreSel"></select></div>
+      <div><label>Test</label><select id="testSel"></select></div>
+    </div>
+    <label>Appointment (future, UTC)</label><input id="appt" type="datetime-local" />
+    <button id="book">Book appointment</button>
+    <div id="bookMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>My bookings</h2>
+    <table><thead><tr><th>ID</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table>
+    <p class="muted" id="empty">No bookings yet — create one above.</p>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const api = () => ($('api').value || 'http://localhost:8000').replace(/\/$/, '');
+const token = () => localStorage.getItem('eve_token');
+const H = () => token() ? {'Authorization': 'Bearer ' + token(), 'Content-Type': 'application/json'} : {'Content-Type': 'application/json'};
+async function req(path, opts={}) {
+  const r = await fetch(api() + path, {...opts, headers: {...H(), ...(opts.headers||{})}});
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || ('HTTP ' + r.status));
+  return {res: r, body};
+}
+function setMsg(el, txt, ok) { el.className = ok ? 'ok' : 'err'; el.textContent = txt; }
+$('saveApi').onclick = () => setMsg($('authMsg'), '', true);
+$('signup').onclick = async () => {
+  try { await req('/auth/signup', {method:'POST', body: JSON.stringify({name: $('name').value || 'User', email: $('email').value, password: $('password').value})}); setMsg($('authMsg'), 'Signed up — now login.', true); }
+  catch(e){ setMsg($('authMsg'), e.message); }
+};
+$('login').onclick = async () => {
+  try { const {body} = await req('/auth/login', {method:'POST', body: JSON.stringify({email: $('email').value, password: $('password').value})});
+    localStorage.setItem('eve_token', body.access_token); refreshWho(); loadCatalog(); loadBookings(); setMsg($('authMsg'), 'Logged in.', true); }
+  catch(e){ setMsg($('authMsg'), e.message); }
+};
+$('logout').onclick = () => { localStorage.removeItem('eve_token'); refreshWho(); };
+async function refreshWho() {
+  const t = token(); $('logout').style.display = t ? '' : 'none';
+  if (!t) { $('who').textContent = ''; return; }
+  try { const {body} = await req('/users/me'); $('who').textContent = body.email; } catch { $('who').textContent = ''; }
+}
+async function loadCatalog() {
+  if (!token()) return;
+  try {
+    const {body: c} = await req('/centres?limit=100'); const {body: t} = await req('/tests?limit=100');
+    $('centreSel').innerHTML = c.map(x => `<option value="${x.id}">${x.name} — ${x.location}</option>`).join('');
+    $('testSel').innerHTML = t.map(x => `<option value="${x.id}">${x.name}</option>`).join('');
+  } catch(e){ setMsg($('bookMsg'), e.message); }
+}
+async function loadBookings() {
+  if (!token()) return;
+  try {
+    const {body} = await req('/bookings?limit=100');
+    $('empty').style.display = body.length ? 'none' : '';
+    $('rows').innerHTML = body.map(b => `<tr><td class="muted">${b.id.slice(0,8)}…</td><td>₹${b.amount}</td>
+      <td><span class="badge ${b.status}">${b.status}</span></td>
+      <td>${b.status === 'PENDING' ? `<button class="ghost" style="width:auto;margin:2px" onclick="pay('${b.id}','SUCCESS')">Pay ✓</button><button class="ghost" style="width:auto;margin:2px" onclick="pay('${b.id}','FAILED')">Pay ✗</button><button class="ghost" style="width:auto;margin:2px" onclick="cancelB('${b.id}')">Cancel</button>` : '<span class="muted">—</span>'}</td></tr>`).join('');
+  } catch(e){ setMsg($('bookMsg'), e.message); }
+}
+$('loadCatalog').onclick = loadCatalog; $('loadBookings').onclick = loadBookings;
+$('book').onclick = async () => {
+  try {
+    const dt = new Date($('appt').value || Date.now() + 864e5).toISOString();
+    const {body} = await req('/bookings', {method:'POST', body: JSON.stringify({centre_id: $('centreSel').value, test_id: $('testSel').value, appointment_at: dt})});
+    setMsg($('bookMsg'), `Booked ${body.id.slice(0,8)}… ₹${body.amount} (${body.status})`, true); loadBookings();
+  } catch(e){ setMsg($('bookMsg'), e.message); }
+};
+window.pay = async (id, outcome) => {
+  try { await req('/payments/', {method:'POST', body: JSON.stringify({booking_id: id, simulate_outcome: outcome})}); loadBookings(); }
+  catch(e){ alert(e.message); }
+};
+window.cancelB = async (id) => {
+  try { await req(`/bookings/${id}/cancel`, {method:'POST'}); loadBookings(); } catch(e){ alert(e.message); }
+};
+refreshWho();
+</script>
+</body>
+</html>
