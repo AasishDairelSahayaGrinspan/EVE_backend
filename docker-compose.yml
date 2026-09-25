@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: eve
+      POSTGRES_USER: eve
+      POSTGRES_PASSWORD: eve
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  app:
+    build: .
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql+psycopg://eve:eve@db:5432/eve
+      JWT_SECRET: ${JWT_SECRET:-change-me-to-a-long-random-secret}
+      ENVIRONMENT: ${ENVIRONMENT:-dev}
+    ports:
+      - "8000:8000"
+volumes:
+  pgdata:

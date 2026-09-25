@@ -1,0 +1,43 @@
+[project]
+name = "eve-healthcare-backend"
+version = "0.1.0"
+description = "Diagnostic booking backend: auth, centres, tests, bookings, simulated payments, idempotent webhooks"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "sqlalchemy>=2.0",
+  "alembic>=1.13",
+  "psycopg[binary]>=3.1",
+  "pydantic>=2.7",
+  "pydantic-settings>=2.3",
+  "PyJWT>=2.8",
+  "bcrypt>=4.1",
+  "email-validator>=2.0",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.0",
+  "httpx>=0.27",
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "strict"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.alembic]
+script_location = "alembic"
