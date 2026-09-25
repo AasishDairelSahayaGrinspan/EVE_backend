@@ -1,5 +1,12 @@
 # EVE Healthcare Backend
 
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.x-D71F00?logo=sqlalchemy&logoColor=white)
+![Alembic](https://img.shields.io/badge/Alembic-migrations-6E6E6E)
+![Pytest](https://img.shields.io/badge/Pytest-tested-0A9EDC?logo=pytest&logoColor=white)
+
 Simulated diagnostic booking service: JWT auth, centres/tests catalogue, server-priced bookings, simulated payments, idempotent webhooks. Modular monolith — FastAPI + PostgreSQL + SQLAlchemy 2.x + Alembic.
 
 ## Overview
