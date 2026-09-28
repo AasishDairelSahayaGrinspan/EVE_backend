@@ -15,6 +15,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Index,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import JSON
@@ -148,6 +149,6 @@ class WebhookEvent(Base):
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     processed: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default="now()", nullable=False
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
